@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import Toast from "./Toast";
-import { sendOtp, verifyOtpAndRegister, ApiError } from "@/lib/api";
+import { verifyOtpAndRegister, ApiError } from "@/lib/api";
 import type { RegistrationFormValues, StudentClass } from "@/lib/types";
 
 const CLASS_OPTIONS: StudentClass[] = ["Class 11", "Class 12", "Dropper"];
@@ -12,12 +12,59 @@ const RESEND_COOLDOWN_SECONDS = 30;
 const SESSION_STORAGE_KEY = "atomic_pathshala_session";
 
 type Step = "details" | "otp";
+type OtpEndpoint = "/api/send-otp" | "/api/verify-otp";
+
+interface OtpApiResponse {
+  success: boolean;
+  message?: string;
+}
+
+async function postOtpRequest(
+  endpoint: OtpEndpoint,
+  body: Record<string, string>
+): Promise<OtpApiResponse> {
+  let response: Response;
+
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError(
+      "Could not reach the OTP service. Check your internet connection and try again."
+    );
+  }
+
+  let data: OtpApiResponse;
+  try {
+    data = await response.json();
+  } catch {
+    throw new ApiError("Unexpected OTP service response. Please try again.");
+  }
+
+  if (!response.ok || !data.success) {
+    throw new ApiError(data.message || "OTP request failed. Please try again.");
+  }
+
+  return data;
+}
+
+async function requestOtp(mobile: string): Promise<void> {
+  await postOtpRequest("/api/send-otp", { mobile });
+}
+
+async function verifyOtp(mobile: string, otp: string): Promise<void> {
+  await postOtpRequest("/api/verify-otp", { mobile, otp });
+}
 
 export default function RegisterForm() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("details");
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isOtpVerified, setIsOtpVerified] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(
     null
@@ -29,6 +76,8 @@ export default function RegisterForm() {
     handleSubmit,
     trigger,
     getValues,
+    setValue,
+    clearErrors,
     formState: { errors },
   } = useForm<RegistrationFormValues>({
     mode: "onTouched",
@@ -50,8 +99,11 @@ export default function RegisterForm() {
     if (!valid || isSendingOtp) return;
 
     setIsSendingOtp(true);
+    setIsOtpVerified(false);
     try {
-      await sendOtp(getValues("phone"));
+      await requestOtp(getValues("phone"));
+      setValue("otp", "");
+      clearErrors("otp");
       setStep("otp");
       setCooldown(RESEND_COOLDOWN_SECONDS);
       setToast({ message: "OTP sent to your mobile number.", variant: "success" });
@@ -68,8 +120,11 @@ export default function RegisterForm() {
   const handleResendOtp = async () => {
     if (cooldown > 0 || isSendingOtp) return;
     setIsSendingOtp(true);
+    setIsOtpVerified(false);
     try {
-      await sendOtp(getValues("phone"));
+      await requestOtp(getValues("phone"));
+      setValue("otp", "");
+      clearErrors("otp");
       setCooldown(RESEND_COOLDOWN_SECONDS);
       setToast({ message: "OTP resent.", variant: "success" });
     } catch (err) {
@@ -87,11 +142,19 @@ export default function RegisterForm() {
     setIsVerifying(true);
 
     try {
+      const phone = values.phone.trim();
+      const otp = values.otp.trim();
+
+      if (!isOtpVerified) {
+        await verifyOtp(phone, otp);
+        setIsOtpVerified(true);
+      }
+
       const session = await verifyOtpAndRegister({
         name: values.name.trim(),
-        phone: values.phone.trim(),
+        phone,
         class: values.studentClass as StudentClass,
-        otp: values.otp.trim(),
+        otp,
         timestamp: new Date().toISOString(),
       });
 
@@ -332,7 +395,12 @@ export default function RegisterForm() {
           <div className="flex items-center justify-between text-xs">
             <button
               type="button"
-              onClick={() => setStep("details")}
+              onClick={() => {
+                setStep("details");
+                setIsOtpVerified(false);
+                setValue("otp", "");
+                clearErrors("otp");
+              }}
               className="text-paper/40 underline-offset-4 transition hover:text-gold hover:underline"
             >
               ← Edit number
