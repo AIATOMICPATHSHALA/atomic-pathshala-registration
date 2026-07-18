@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /register
+Disallow: /register/success
+
+Sitemap: https://register.atomicpathshala.com/sitemap.xml
