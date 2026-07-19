@@ -9,10 +9,10 @@ export interface RegistrationFormValues {
 export interface RegistrationPayload {
   name: string;
   phone: string;
+  email: string;
   class: StudentClass;
   timestamp: string;
 }
-
 /** The live session's date/time/Meet link — auto-generated via Google Calendar. */
 export interface SessionInfo {
   date: string;
