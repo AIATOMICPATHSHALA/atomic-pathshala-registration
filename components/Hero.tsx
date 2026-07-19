@@ -23,15 +23,15 @@ export default function Hero() {
         </div>
 
         <div className="mb-4">
-          <Image
-            src="/atomic-pathshala-logo.png"
-            alt="Atomic Pathshala"
-            width={220}
-            height={88}
-            className="h-10 w-auto sm:h-12"
-            priority
-          />
-        </div>
+  <Image
+    src="/atomic-pathshala-logo.png"
+    alt="Atomic Pathshala"
+    width={320}
+    height={128}
+    className="h-16 w-auto sm:h-20"
+    priority
+  />
+</div>
 
         <p className="font-mono text-2xl font-bold uppercase tracking-[0.15em] text-gold sm:text-4xl">
   Atomic Pathshala
