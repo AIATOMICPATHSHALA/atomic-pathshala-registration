@@ -96,12 +96,13 @@ export async function POST(request: Request) {
     return jsonError("Registration server error. Please try again.", 502);
   }
 
-  let data: ApiResponse;
-  try {
-    data = (await response.json()) as ApiResponse;
-  } catch {
-    return jsonError("Unexpected registration server response.", 502);
-  }
+  const rawText = await response.text();
+let data: ApiResponse;
+try {
+  data = JSON.parse(rawText) as ApiResponse;
+} catch {
+  return jsonError("DEBUG RAW: " + rawText.slice(0, 500), 502);
+}
 
   if (data.status === "error" || data.success === false) {
     return jsonError(data.message || "Registration failed. Please try again.", 400);
