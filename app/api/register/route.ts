@@ -84,7 +84,7 @@ export async function POST(request: Request) {
   try {
     response = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       cache: "no-store",
     });
