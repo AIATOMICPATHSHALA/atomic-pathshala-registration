@@ -33,9 +33,9 @@ export default function Hero() {
           />
         </div>
 
-        <p className="font-mono text-xs uppercase tracking-[0.35em] text-paper/40">
-          Atomic Pathshala
-        </p>
+        <p className="font-mono text-2xl font-bold uppercase tracking-[0.15em] text-gold sm:text-4xl">
+  Atomic Pathshala
+</p>
 
         <h1 className="mt-3 animate-fade-up font-display text-balance text-[2.15rem] font-semibold leading-[1.15] text-paper sm:text-5xl">
           Free Biology Strategy &amp;{" "}
