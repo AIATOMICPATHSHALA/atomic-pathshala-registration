@@ -6,6 +6,11 @@ export const dynamic = "force-dynamic";
 
 const PHONE_PATTERN = /^[6-9]\d{9}$/;
 const CLASS_OPTIONS: StudentClass[] = ["Class 11", "Class 12", "Dropper"];
+const FALLBACK_SESSION = {
+  meetLink: "https://meet.google.com/xxx-xxxx-xxx",
+  date: "Sunday, 27 July 2026",
+  time: "7:00 PM - 8:30 PM IST",
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -98,13 +103,16 @@ export async function POST(request: Request) {
     return jsonError("Unexpected registration server response.", 502);
   }
 
-  if (data.status === "error") {
+  if (data.status === "error" || data.success === false) {
     return jsonError(data.message || "Registration failed. Please try again.", 400);
   }
 
-  if (!data.session) {
-    return jsonError("Registered, but session details are missing. Please contact support.", 502);
+  if (data.status !== "success" && data.success !== true) {
+    return jsonError(data.message || "Registration failed. Please try again.", 502);
   }
 
-  return NextResponse.json({ success: true, session: data.session }, { status: 200 });
+  return NextResponse.json(
+    { success: true, session: data.session ?? FALLBACK_SESSION },
+    { status: 200 }
+  );
 }

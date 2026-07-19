@@ -21,7 +21,8 @@ export interface SessionInfo {
 }
 
 export interface ApiResponse {
-  status: "success" | "error";
+  success?: boolean;
+  status?: "success" | "error";
   message?: string;
   session?: SessionInfo;
 }
