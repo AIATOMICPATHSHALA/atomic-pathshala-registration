@@ -23,7 +23,7 @@ export default function RegisterForm() {
     formState: { errors },
   } = useForm<RegistrationFormValues>({
     mode: "onTouched",
-    defaultValues: { name: "", phone: "", studentClass: "" },
+    defaultValues: { name: "", phone: "", email: "", studentClass: "" },
   });
 
   const onSubmit = async (values: RegistrationFormValues) => {
@@ -32,11 +32,12 @@ export default function RegisterForm() {
 
     try {
       const session = await registerStudent({
-        name: values.name.trim(),
-        phone: values.phone.trim(),
-        class: values.studentClass as StudentClass,
-        timestamp: new Date().toISOString(),
-      });
+  name: values.name.trim(),
+  phone: values.phone.trim(),
+  email: values.email.trim(),
+  class: values.studentClass as StudentClass,
+  timestamp: new Date().toISOString(),
+});
 
       sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
       setToast({ message: "Registered successfully. Redirecting...", variant: "success" });
@@ -135,6 +136,36 @@ export default function RegisterForm() {
             {errors.phone && (
               <p id="phone-error" className="mt-1.5 text-xs text-red-400">
                 {errors.phone.message}
+              </p>
+            )}
+          </div>
+
+<div>
+            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-paper/80">
+              Email address
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? "email-error" : undefined}
+              disabled={isSubmitting}
+              className={`w-full rounded-lg border bg-ink px-4 py-3 text-base text-paper placeholder:text-paper/30 outline-none transition focus:border-gold disabled:opacity-60 ${
+                errors.email ? "border-red-500/70" : "border-ink-line"
+              }`}
+              {...register("email", {
+                required: "Please enter your email",
+                pattern: {
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  message: "Enter a valid email address",
+                },
+              })}
+            />
+            {errors.email && (
+              <p id="email-error" className="mt-1.5 text-xs text-red-400">
+                {errors.email.message}
               </p>
             )}
           </div>

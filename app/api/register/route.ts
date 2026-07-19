@@ -50,11 +50,12 @@ export async function POST(request: Request) {
   const name = getString(parsed.name);
   const phone = getString(parsed.phone).replace(/\D/g, "");
   const studentClass = getString(parsed.class);
+  const email = getString(parsed.email);
   const timestamp = getString(parsed.timestamp) || new Date().toISOString();
 
-  if (!name || !phone || !studentClass) {
-    return jsonError("Please fill all required fields.", 400);
-  }
+  if (!name || !phone || !email || !studentClass) {
+  return jsonError("Please fill all required fields.", 400);
+}
 
   if (name.length < 3) {
     return jsonError("Name must be at least 3 characters.", 400);
@@ -71,12 +72,13 @@ export async function POST(request: Request) {
   const endpoint = getGoogleScriptUrl();
 
   const payload: RegistrationPayload & { action: "register" } = {
-    action: "register",
-    name,
-    phone,
-    class: studentClass as StudentClass,
-    timestamp,
-  };
+  action: "register",
+  name,
+  phone,
+  email,
+  class: studentClass as StudentClass,
+  timestamp,
+};
 
   let response: Response;
   try {
