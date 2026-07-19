@@ -84,42 +84,24 @@ export async function POST(request: Request) {
   try {
     response = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload),
-      redirect: "manual",
+      cache: "no-store",
     });
-
-    // Google Apps Script often 302-redirects POST requests. Node's fetch
-    // converts the method to GET on auto-follow, which drops the body and
-    // breaks doPost(). So we follow the redirect manually, preserving POST.
-    if (response.status === 301 || response.status === 302 || response.status === 303) {
-      const redirectUrl = response.headers.get("location");
-      if (redirectUrl) {
-        response = await fetch(redirectUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      }
-    }
   } catch {
     return jsonError("Could not reach the registration server. Please try again.", 503);
   }
 
   if (!response.ok) {
-    return jsonError(
-      "DEBUG3: status=" + response.status + " location=" + response.headers.get("location"),
-      502
-    );
+    return jsonError("Registration server error. Please try again.", 502);
   }
 
-  const rawText2 = await response.text();
-let data: ApiResponse;
-try {
-  data = JSON.parse(rawText2) as ApiResponse;
-} catch {
-  return jsonError("DEBUG2: status=" + response.status + " body=" + rawText2.slice(0, 400), 502);
-}
+  let data: ApiResponse;
+  try {
+    data = (await response.json()) as ApiResponse;
+  } catch {
+    return jsonError("Unexpected registration server response.", 502);
+  }
 
   if (data.status === "error" || data.success === false) {
     return jsonError(data.message || "Registration failed. Please try again.", 400);
