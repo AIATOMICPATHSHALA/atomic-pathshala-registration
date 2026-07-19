@@ -107,7 +107,10 @@ export async function POST(request: Request) {
   }
 
   if (!response.ok) {
-    return jsonError("Registration server error. Please try again.", 502);
+    return jsonError(
+      "DEBUG3: status=" + response.status + " location=" + response.headers.get("location"),
+      502
+    );
   }
 
   const rawText2 = await response.text();
