@@ -1,3 +1,4 @@
+import Image from "next/image";
 import AtomOrbit from "./AtomOrbit";
 
 const AGENDA = [
@@ -19,6 +20,17 @@ export default function Hero() {
             <span className="absolute inline-flex h-full w-full animate-pulse-dot rounded-full bg-gold" />
           </span>
           Live on Google Meet
+        </div>
+
+        <div className="mb-4">
+          <Image
+            src="/atomic-pathshala-logo.png"
+            alt="Atomic Pathshala"
+            width={220}
+            height={88}
+            className="h-10 w-auto sm:h-12"
+            priority
+          />
         </div>
 
         <p className="font-mono text-xs uppercase tracking-[0.35em] text-paper/40">
