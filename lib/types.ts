@@ -3,6 +3,7 @@ export type StudentClass = "Class 11" | "Class 12" | "Dropper";
 export interface RegistrationFormValues {
   name: string;
   phone: string;
+  email: string;
   studentClass: StudentClass | "";
 }
 
