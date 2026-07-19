@@ -86,8 +86,22 @@ export async function POST(request: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      cache: "no-store",
+      redirect: "manual",
     });
+
+    // Google Apps Script often 302-redirects POST requests. Node's fetch
+    // converts the method to GET on auto-follow, which drops the body and
+    // breaks doPost(). So we follow the redirect manually, preserving POST.
+    if (response.status === 301 || response.status === 302 || response.status === 303) {
+      const redirectUrl = response.headers.get("location");
+      if (redirectUrl) {
+        response = await fetch(redirectUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+    }
   } catch {
     return jsonError("Could not reach the registration server. Please try again.", 503);
   }
