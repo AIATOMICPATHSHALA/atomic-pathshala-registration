@@ -6,6 +6,8 @@ export const dynamic = "force-dynamic";
 
 const PHONE_PATTERN = /^[6-9]\d{9}$/;
 const CLASS_OPTIONS: StudentClass[] = ["Class 11", "Class 12", "Dropper"];
+const DEFAULT_GOOGLE_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbxlKqlBVIQHCo7kkgsMFoUukkojsyjYMwjSuKrbjvbIHjUv_blewe4Fjr9akZYvQR14/exec";
 const FALLBACK_SESSION = {
   meetLink: "https://meet.google.com/xxx-xxxx-xxx",
   date: "Sunday, 27 July 2026",
@@ -20,11 +22,11 @@ function getString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function getGoogleScriptUrl(): string | null {
+function getGoogleScriptUrl(): string {
   return (
     process.env.GOOGLE_SCRIPT_URL?.trim() ||
     process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL?.trim() ||
-    null
+    DEFAULT_GOOGLE_SCRIPT_URL
   );
 }
 
@@ -67,10 +69,6 @@ export async function POST(request: Request) {
   }
 
   const endpoint = getGoogleScriptUrl();
-  if (!endpoint) {
-    console.error("Missing GOOGLE_SCRIPT_URL or NEXT_PUBLIC_GOOGLE_SCRIPT_URL.");
-    return jsonError("Registration is not connected yet. Please contact support.", 500);
-  }
 
   const payload: RegistrationPayload & { action: "register" } = {
     action: "register",
