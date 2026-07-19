@@ -4,14 +4,12 @@ export interface RegistrationFormValues {
   name: string;
   phone: string;
   studentClass: StudentClass | "";
-  otp: string;
 }
 
 export interface RegistrationPayload {
   name: string;
   phone: string;
   class: StudentClass;
-  otp: string;
   timestamp: string;
 }
 
@@ -24,6 +22,12 @@ export interface SessionInfo {
 
 export interface ApiResponse {
   status: "success" | "error";
+  message?: string;
+  session?: SessionInfo;
+}
+
+export interface RegisterApiResponse {
+  success: boolean;
   message?: string;
   session?: SessionInfo;
 }

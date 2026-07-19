@@ -1,172 +1,52 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import Toast from "./Toast";
-import { verifyOtpAndRegister, ApiError } from "@/lib/api";
+import { registerStudent, ApiError } from "@/lib/api";
 import type { RegistrationFormValues, StudentClass } from "@/lib/types";
 
 const CLASS_OPTIONS: StudentClass[] = ["Class 11", "Class 12", "Dropper"];
-const RESEND_COOLDOWN_SECONDS = 30;
 const SESSION_STORAGE_KEY = "atomic_pathshala_session";
-
-type Step = "details" | "otp";
-type OtpEndpoint = "/api/send-otp" | "/api/verify-otp";
-
-interface OtpApiResponse {
-  success: boolean;
-  message?: string;
-}
-
-async function postOtpRequest(
-  endpoint: OtpEndpoint,
-  body: Record<string, string>
-): Promise<OtpApiResponse> {
-  let response: Response;
-
-  try {
-    response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new ApiError(
-      "Could not reach the OTP service. Check your internet connection and try again."
-    );
-  }
-
-  let data: OtpApiResponse;
-  try {
-    data = await response.json();
-  } catch {
-    throw new ApiError("Unexpected OTP service response. Please try again.");
-  }
-
-  if (!response.ok || !data.success) {
-    throw new ApiError(data.message || "OTP request failed. Please try again.");
-  }
-
-  return data;
-}
-
-async function requestOtp(mobile: string): Promise<void> {
-  await postOtpRequest("/api/send-otp", { mobile });
-}
-
-async function verifyOtp(mobile: string, otp: string): Promise<void> {
-  await postOtpRequest("/api/verify-otp", { mobile, otp });
-}
 
 export default function RegisterForm() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("details");
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isOtpVerified, setIsOtpVerified] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(
     null
   );
-  const otpInputRef = useRef<HTMLInputElement | null>(null);
 
   const {
     register,
     handleSubmit,
-    trigger,
-    getValues,
-    setValue,
-    clearErrors,
     formState: { errors },
   } = useForm<RegistrationFormValues>({
     mode: "onTouched",
-    defaultValues: { name: "", phone: "", studentClass: "", otp: "" },
+    defaultValues: { name: "", phone: "", studentClass: "" },
   });
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setInterval(() => setCooldown((s) => s - 1), 1000);
-    return () => clearInterval(timer);
-  }, [cooldown]);
-
-  useEffect(() => {
-    if (step === "otp") otpInputRef.current?.focus();
-  }, [step]);
-
-  const handleSendOtp = async () => {
-    const valid = await trigger(["name", "phone", "studentClass"]);
-    if (!valid || isSendingOtp) return;
-
-    setIsSendingOtp(true);
-    setIsOtpVerified(false);
-    try {
-      await requestOtp(getValues("phone"));
-      setValue("otp", "");
-      clearErrors("otp");
-      setStep("otp");
-      setCooldown(RESEND_COOLDOWN_SECONDS);
-      setToast({ message: "OTP sent to your mobile number.", variant: "success" });
-    } catch (err) {
-      setToast({
-        message: err instanceof ApiError ? err.message : "Could not send OTP. Try again.",
-        variant: "error",
-      });
-    } finally {
-      setIsSendingOtp(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (cooldown > 0 || isSendingOtp) return;
-    setIsSendingOtp(true);
-    setIsOtpVerified(false);
-    try {
-      await requestOtp(getValues("phone"));
-      setValue("otp", "");
-      clearErrors("otp");
-      setCooldown(RESEND_COOLDOWN_SECONDS);
-      setToast({ message: "OTP resent.", variant: "success" });
-    } catch (err) {
-      setToast({
-        message: err instanceof ApiError ? err.message : "Could not resend OTP.",
-        variant: "error",
-      });
-    } finally {
-      setIsSendingOtp(false);
-    }
-  };
-
   const onSubmit = async (values: RegistrationFormValues) => {
-    if (isVerifying) return;
-    setIsVerifying(true);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
     try {
-      const phone = values.phone.trim();
-      const otp = values.otp.trim();
-
-      if (!isOtpVerified) {
-        await verifyOtp(phone, otp);
-        setIsOtpVerified(true);
-      }
-
-      const session = await verifyOtpAndRegister({
+      const session = await registerStudent({
         name: values.name.trim(),
-        phone,
+        phone: values.phone.trim(),
         class: values.studentClass as StudentClass,
-        otp,
         timestamp: new Date().toISOString(),
       });
 
       sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-      setToast({ message: "Registered successfully. Redirecting…", variant: "success" });
+      setToast({ message: "Registered successfully. Redirecting...", variant: "success" });
       router.push("/register/success");
     } catch (err) {
       setToast({
         message: err instanceof ApiError ? err.message : "Something went wrong. Please try again.",
         variant: "error",
       });
-      setIsVerifying(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -182,12 +62,11 @@ export default function RegisterForm() {
             Seats are limited
           </p>
           <h2 className="font-display text-2xl font-semibold text-paper">
-            {step === "details" ? "Reserve your spot" : "Verify your number"}
+            Reserve your spot
           </h2>
         </div>
 
-        {/* STEP 1: details */}
-        <div className={step === "details" ? "space-y-5" : "hidden"}>
+        <div className="space-y-5">
           <div>
             <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-paper/80">
               Full name
@@ -200,8 +79,8 @@ export default function RegisterForm() {
               placeholder="e.g. Ananya Sharma"
               aria-invalid={!!errors.name}
               aria-describedby={errors.name ? "name-error" : undefined}
-              disabled={step !== "details"}
-              className={`w-full rounded-lg border bg-ink px-4 py-3 text-base text-paper placeholder:text-paper/30 outline-none transition focus:border-gold ${
+              disabled={isSubmitting}
+              className={`w-full rounded-lg border bg-ink px-4 py-3 text-base text-paper placeholder:text-paper/30 outline-none transition focus:border-gold disabled:opacity-60 ${
                 errors.name ? "border-red-500/70" : "border-ink-line"
               }`}
               {...register("name", {
@@ -237,7 +116,7 @@ export default function RegisterForm() {
                 placeholder="98765 43210"
                 aria-invalid={!!errors.phone}
                 aria-describedby={errors.phone ? "phone-error" : undefined}
-                disabled={step !== "details"}
+                disabled={isSubmitting}
                 className={`w-full rounded-lg border bg-ink py-3 pl-14 pr-4 text-base tracking-wide text-paper placeholder:text-paper/30 outline-none transition focus:border-gold disabled:opacity-60 ${
                   errors.phone ? "border-red-500/70" : "border-ink-line"
                 }`}
@@ -267,7 +146,7 @@ export default function RegisterForm() {
             <select
               id="studentClass"
               defaultValue=""
-              disabled={step !== "details"}
+              disabled={isSubmitting}
               aria-invalid={!!errors.studentClass}
               aria-describedby={errors.studentClass ? "class-error" : undefined}
               className={`w-full appearance-none rounded-lg border bg-ink px-4 py-3 text-base text-paper outline-none transition focus:border-gold disabled:opacity-60 ${
@@ -300,120 +179,28 @@ export default function RegisterForm() {
           </div>
 
           <button
-            type="button"
-            onClick={handleSendOtp}
-            disabled={isSendingOtp}
+            type="submit"
+            disabled={isSubmitting}
             className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-lg bg-gold px-6 py-3.5 text-base font-semibold text-ink transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {isSendingOtp ? (
+            {isSubmitting ? (
               <>
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-ink/30 border-t-ink" />
-                Sending OTP…
+                Registering...
               </>
             ) : (
               <>
-                Send OTP
+                Register Now
                 <span aria-hidden="true" className="transition group-hover:translate-x-0.5">
-                  →
+                  -&gt;
                 </span>
               </>
             )}
           </button>
 
           <p className="text-center text-[11px] leading-relaxed text-paper/35">
-            We&apos;ll text you a one-time code to confirm your number.
+            Your details will be saved for the live session.
           </p>
-        </div>
-
-        {/* STEP 2: OTP */}
-        <div className={step === "otp" ? "space-y-5" : "hidden"}>
-          <p className="text-center text-sm text-paper/60">
-            Enter the 6-digit code sent to{" "}
-            <span className="font-medium text-paper">+91 {getValues("phone")}</span>
-          </p>
-
-          <div>
-            <label htmlFor="otp" className="mb-1.5 block text-sm font-medium text-paper/80">
-              OTP
-            </label>
-            <input
-              id="otp"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              placeholder="••••••"
-              aria-invalid={!!errors.otp}
-              aria-describedby={errors.otp ? "otp-error" : undefined}
-              className={`w-full rounded-lg border bg-ink px-4 py-3 text-center text-lg tracking-[0.5em] text-paper placeholder:tracking-normal placeholder:text-paper/30 outline-none transition focus:border-gold ${
-                errors.otp ? "border-red-500/70" : "border-ink-line"
-              }`}
-              {...(() => {
-                const field = register("otp", {
-                  required: "Enter the OTP sent to your phone",
-                  pattern: { value: /^\d{6}$/, message: "OTP must be 6 digits" },
-                  onChange: (e) => {
-                    e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6);
-                  },
-                });
-                return {
-                  ...field,
-                  ref: (el: HTMLInputElement | null) => {
-                    field.ref(el);
-                    otpInputRef.current = el;
-                  },
-                };
-              })()}
-            />
-            {errors.otp && (
-              <p id="otp-error" className="mt-1.5 text-xs text-red-400">
-                {errors.otp.message}
-              </p>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={isVerifying}
-            className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-lg bg-gold px-6 py-3.5 text-base font-semibold text-ink transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {isVerifying ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-ink/30 border-t-ink" />
-                Verifying…
-              </>
-            ) : (
-              <>
-                Verify &amp; Register
-                <span aria-hidden="true" className="transition group-hover:translate-x-0.5">
-                  →
-                </span>
-              </>
-            )}
-          </button>
-
-          <div className="flex items-center justify-between text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setStep("details");
-                setIsOtpVerified(false);
-                setValue("otp", "");
-                clearErrors("otp");
-              }}
-              className="text-paper/40 underline-offset-4 transition hover:text-gold hover:underline"
-            >
-              ← Edit number
-            </button>
-            <button
-              type="button"
-              onClick={handleResendOtp}
-              disabled={cooldown > 0 || isSendingOtp}
-              className="text-paper/40 underline-offset-4 transition hover:text-gold hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:no-underline"
-            >
-              {cooldown > 0 ? `Resend OTP in ${cooldown}s` : "Resend OTP"}
-            </button>
-          </div>
         </div>
       </form>
 
